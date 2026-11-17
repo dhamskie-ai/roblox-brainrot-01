@@ -109,7 +109,10 @@ end
 -- Walks the bot's humanoid to targetPos with PathfindingService. Recomputes
 -- if the target moved >6 studs or the bot is stuck ~1.5 s (roblox-game-01
 -- rev-5 recipe). Returns true when the bot arrives.
-local function moveBotTo(bot, targetPos)
+-- FIX #2: recompute depth is capped at 3 — the old unbounded recursion
+-- could stack-overflow if a bot got permanently stuck.
+local function moveBotTo(bot, targetPos, depth)
+	depth = depth or 0
 	local humanoid = bot.model:FindFirstChildOfClass("Humanoid")
 	local root = bot.model.PrimaryPart
 	if not humanoid or not root then
@@ -146,7 +149,10 @@ local function moveBotTo(bot, targetPos)
 		end
 		conn:Disconnect()
 		if not reached then
-			return moveBotTo(bot, targetPos) -- stuck: recompute the path
+			if depth >= 3 then
+				return false
+			end
+			return moveBotTo(bot, targetPos, depth + 1) -- stuck: recompute the path
 		end
 	end
 	return true
@@ -173,8 +179,11 @@ end
 local function botBrain(bot)
 	task.spawn(function()
 		while bot.model.Parent do
-			task.wait(2 + math.random() * 3)
-			local owned = PlayerState.getAllOwnedPedestals()
+			-- FIX #2: satu iterasi otak bot yang throw tidak boleh
+			-- mematikan bot selamanya — tangkap, warn, lanjut loop.
+			local ok, err = pcall(function()
+				task.wait(2 + math.random() * 3)
+				local owned = PlayerState.getAllOwnedPedestals()
 			if #owned == 0 then
 				-- Nothing to steal: wander to a random plaza spot.
 				local wander = Vector3.new(math.random(-50, 50), 0, math.random(-50, 50))
@@ -199,14 +208,18 @@ local function botBrain(bot)
 								local head = bot.model:FindFirstChild("Head")
 								if head then
 									local body = model.PrimaryPart
-									body.CFrame = head.CFrame * CFrame.new(0, 3.2, 0)
-									local weld = Instance.new("Weld")
-									weld.Name = "CarryWeld"
-									weld.Part0 = head
-									weld.Part1 = body
-									weld.C0 = CFrame.new(0, 3.2, 0)
-									weld.Parent = head
-									bot.carried = model
+									if body then
+										-- FIX #2: tinggi bawa ikut ukuran model (lihat CarryAndPlace).
+										local carryY = (model:GetAttribute("BodySize") or 2) / 2 + 2.2
+										body.CFrame = head.CFrame * CFrame.new(0, carryY, 0)
+										local weld = Instance.new("Weld")
+										weld.Name = "CarryWeld"
+										weld.Part0 = head
+										weld.Part1 = body
+										weld.C0 = CFrame.new(0, carryY, 0)
+										weld.Parent = head
+										bot.carried = model
+									end
 								end
 								moveBotTo(bot, bot.corner)
 								task.wait(Config.BOT_DESPAWN_S)
@@ -222,35 +235,45 @@ local function botBrain(bot)
 					end
 				end
 			end
+			end)
+			if not ok then
+				warn("[PasarBrainrot] botBrain gagal: " .. tostring(err))
+			end
 		end
 	end)
 end
 
 function ThiefBot.start()
 	for i = 1, Config.THIEF_BOTS do
-		local corner = Config.BOT_CORNERS[i] or Config.BOT_CORNERS[1]
-		local spawnPos = Vector3.new(corner.X, 0, corner.Z)
-		local color = Color3.fromRGB(60, 60, 60)
-		local model = buildBotModel("Maling" .. tostring(i), color, spawnPos)
-		local bot = { model = model, corner = corner, carried = nil }
-		table.insert(bots, bot)
+		-- FIX #2: satu bot yang gagal build tidak boleh membatalkan bot lain.
+		local ok, err = pcall(function()
+			local corner = Config.BOT_CORNERS[i] or Config.BOT_CORNERS[1]
+			local spawnPos = Vector3.new(corner.X, 0, corner.Z)
+			local color = Color3.fromRGB(60, 60, 60)
+			local model = buildBotModel("Maling" .. tostring(i), color, spawnPos)
+			local bot = { model = model, corner = corner, carried = nil }
+			table.insert(bots, bot)
 
-		-- Touching a carrying bot makes it drop the brainrot.
-		local torso = model:FindFirstChild("Torso")
-		if torso then
-			torso.Touched:Connect(function(hit)
-				if not bot.carried then
-					return
-				end
-				local character = hit.Parent
-				local player = character and Players:GetPlayerFromCharacter(character)
-				if player then
-					dropStolen(bot)
-				end
-			end)
+			-- Touching a carrying bot makes it drop the brainrot.
+			local torso = model:FindFirstChild("Torso")
+			if torso then
+				torso.Touched:Connect(function(hit)
+					if not bot.carried then
+						return
+					end
+					local character = hit.Parent
+					local player = character and Players:GetPlayerFromCharacter(character)
+					if player then
+						dropStolen(bot)
+					end
+				end)
+			end
+
+			botBrain(bot)
+		end)
+		if not ok then
+			warn("[PasarBrainrot] ThiefBot " .. tostring(i) .. " gagal start: " .. tostring(err))
 		end
-
-		botBrain(bot)
 	end
 end
 

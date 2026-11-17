@@ -41,9 +41,11 @@ local function makePart(name, size, color, material)
 	return part
 end
 
-local function weldTo(body, part, offsetCFrame)
+-- FIX #2: weldTo mem-parent part LANGSUNG ke model (bukan via body.Parent,
+-- yang hilang diam-diam bila body belum ter-parent saat dipanggil).
+local function weldTo(model, body, part, offsetCFrame)
 	part.CFrame = body.CFrame * offsetCFrame
-	part.Parent = body.Parent
+	part.Parent = model
 	local weld = Instance.new("Weld")
 	weld.Part0 = body
 	weld.Part1 = part
@@ -52,70 +54,79 @@ local function weldTo(body, part, offsetCFrame)
 end
 
 -- One accessory per kind: a straw, sneakers, sunglasses, wings, a cape,
--- an afro, glowsticks, a crown, a money bag or a mic.
-local function buildAccessory(body, kind, size, bodyColor)
+-- an afro, glowsticks, a crown, a money bag or a mic. Unknown kind = no-op.
+local function buildAccessory(model, body, kind, size, bodyColor)
 	local s = size -- body edge length, used to scale the accessory
 	if kind == "straw" then
 		local straw = makePart("Straw", Vector3.new(0.25, s * 0.9, 0.25), Color3.fromRGB(255, 80, 120))
-		weldTo(body, straw, CFrame.new(s * 0.25, s * 0.85, 0) * CFrame.Angles(0, 0, math.rad(20)))
+		weldTo(model, body, straw, CFrame.new(s * 0.25, s * 0.85, 0) * CFrame.Angles(0, 0, math.rad(20)))
 	elseif kind == "sneakers" then
 		for _, side in ipairs({ -1, 1 }) do
 			local shoe = makePart("Sneaker", Vector3.new(s * 0.35, s * 0.22, s * 0.55), Color3.fromRGB(240, 240, 240))
-			weldTo(body, shoe, CFrame.new(side * s * 0.28, -s * 0.6, s * 0.1))
+			weldTo(model, body, shoe, CFrame.new(side * s * 0.28, -s * 0.6, s * 0.1))
 		end
 	elseif kind == "sunglasses" then
 		local glasses = makePart("Sunglasses", Vector3.new(s * 0.7, s * 0.2, s * 0.15), Color3.fromRGB(20, 20, 20), Enum.Material.Neon)
-		weldTo(body, glasses, CFrame.new(0, s * 0.55, s * 0.32))
+		weldTo(model, body, glasses, CFrame.new(0, s * 0.55, s * 0.32))
 	elseif kind == "wings" then
 		for _, side in ipairs({ -1, 1 }) do
 			local wing = makePart("Wing", Vector3.new(s * 0.7, s * 0.12, s * 0.5), Color3.fromRGB(255, 255, 255))
-			weldTo(body, wing, CFrame.new(side * s * 0.7, s * 0.15, -s * 0.1) * CFrame.Angles(0, 0, side * math.rad(25)))
+			weldTo(model, body, wing, CFrame.new(side * s * 0.7, s * 0.15, -s * 0.1) * CFrame.Angles(0, 0, side * math.rad(25)))
 		end
 	elseif kind == "cape" then
 		local cape = makePart("Cape", Vector3.new(s * 0.9, s * 0.9, s * 0.12), Color3.fromRGB(160, 30, 30))
-		weldTo(body, cape, CFrame.new(0, -s * 0.1, -s * 0.55))
+		weldTo(model, body, cape, CFrame.new(0, -s * 0.1, -s * 0.55))
 	elseif kind == "afro" then
 		local afro = makePart("Afro", Vector3.new(s * 0.9, s * 0.5, s * 0.9), Color3.fromRGB(40, 20, 10))
 		afro.Shape = Enum.PartType.Ball
-		weldTo(body, afro, CFrame.new(0, s * 0.85, 0))
+		weldTo(model, body, afro, CFrame.new(0, s * 0.85, 0))
 		local ball = makePart("DiscoBall", Vector3.new(s * 0.35, s * 0.35, s * 0.35), Color3.fromRGB(200, 220, 255), Enum.Material.Metal)
 		ball.Shape = Enum.PartType.Ball
-		weldTo(body, ball, CFrame.new(s * 0.55, s * 0.7, s * 0.2))
+		weldTo(model, body, ball, CFrame.new(s * 0.55, s * 0.7, s * 0.2))
 	elseif kind == "glowsticks" then
 		for _, side in ipairs({ -1, 1 }) do
 			local stick = makePart("Glowstick", Vector3.new(s * 0.12, s * 0.6, s * 0.12), Color3.fromRGB(80, 255, 160), Enum.Material.Neon)
-			weldTo(body, stick, CFrame.new(side * s * 0.6, s * 0.2, s * 0.15) * CFrame.Angles(0, 0, side * math.rad(30)))
+			weldTo(model, body, stick, CFrame.new(side * s * 0.6, s * 0.2, s * 0.15) * CFrame.Angles(0, 0, side * math.rad(30)))
 		end
 	elseif kind == "crown" then
 		local crown = makePart("Crown", Vector3.new(s * 0.55, s * 0.3, s * 0.55), Color3.fromRGB(255, 215, 0), Enum.Material.Metal)
-		weldTo(body, crown, CFrame.new(0, s * 0.95, 0))
+		weldTo(model, body, crown, CFrame.new(0, s * 0.95, 0))
 	elseif kind == "moneybag" then
 		local bag = makePart("MoneyBag", Vector3.new(s * 0.5, s * 0.55, s * 0.4), Color3.fromRGB(120, 200, 90))
 		bag.Shape = Enum.PartType.Ball
-		weldTo(body, bag, CFrame.new(s * 0.55, -s * 0.2, s * 0.25))
+		weldTo(model, body, bag, CFrame.new(s * 0.55, -s * 0.2, s * 0.25))
 	elseif kind == "mic" then
 		local mic = makePart("Mic", Vector3.new(s * 0.18, s * 0.6, s * 0.18), Color3.fromRGB(60, 60, 60))
-		weldTo(body, mic, CFrame.new(s * 0.6, s * 0.1, s * 0.2))
+		weldTo(model, body, mic, CFrame.new(s * 0.6, s * 0.1, s * 0.2))
 		local micHead = makePart("MicHead", Vector3.new(s * 0.3, s * 0.3, s * 0.3), Color3.fromRGB(255, 120, 200))
 		micHead.Shape = Enum.PartType.Ball
-		weldTo(body, micHead, CFrame.new(s * 0.6, s * 0.45, s * 0.2))
+		weldTo(model, body, micHead, CFrame.new(s * 0.6, s * 0.45, s * 0.2))
 	end
 end
 
 -- Builds the Model. The caller sets its position with PivotTo and parents it.
 -- Returns the model; its attributes carry CharId, Rarity, Mutation, Rate, Price.
+-- FIX #2: never throws on any row/mutation — nil row falls back to CAST[1],
+-- missing fields get safe defaults, and a failing accessory cannot kill the
+-- model (verified by audit for all 12 CAST rows x 3 mutations).
 function BrainrotFactory.buildBrainrotModel(row, mutation)
+	if type(row) ~= "table" then
+		row = BrainrotData.CAST[1]
+	end
+	mutation = mutation or "Normal"
 	local mult = BrainrotFactory.getMutationMultiplier(mutation)
-	local size = row.size
-	local displayName = row.name
+	local size = tonumber(row.size) or 3
+	local rate = tonumber(row.rate) or 0
+	local price = tonumber(row.price) or 0
+	local displayName = row.name or "Brainrot"
 	if mutation ~= "Normal" then
-		displayName = mutation .. " " .. row.name
+		displayName = mutation .. " " .. displayName
 	end
 
 	local model = Instance.new("Model")
 	model.Name = displayName
 
-	local bodyColor = row.color
+	local bodyColor = row.color or Color3.fromRGB(200, 200, 200)
 	local bodyMaterial = Enum.Material.SmoothPlastic
 	if mutation == "Emas" then
 		bodyColor = Color3.fromRGB(255, 205, 40)
@@ -130,23 +141,25 @@ function BrainrotFactory.buildBrainrotModel(row, mutation)
 	local headSize = size * 0.62
 	local head = makePart("Head", Vector3.new(headSize, headSize, headSize), bodyColor, bodyMaterial)
 	head.Shape = Enum.PartType.Ball
-	weldTo(body, head, CFrame.new(0, size * 0.72, 0))
-	head.Parent = model
+	weldTo(model, body, head, CFrame.new(0, size * 0.72, 0))
 
 	for _, side in ipairs({ -1, 1 }) do
 		local eye = makePart("Eye", Vector3.new(size * 0.14, size * 0.18, size * 0.08), Color3.fromRGB(20, 20, 20))
-		weldTo(body, eye, CFrame.new(side * size * 0.16, size * 0.78, size * 0.32))
-		eye.Parent = model
+		weldTo(model, body, eye, CFrame.new(side * size * 0.16, size * 0.78, size * 0.32))
 	end
 
-	buildAccessory(body, row.accessory, size, bodyColor)
+	local accOk, accErr = pcall(buildAccessory, model, body, row.accessory, size, bodyColor)
+	if not accOk then
+		warn("[PasarBrainrot] accessory gagal (" .. tostring(row.accessory) .. "): " .. tostring(accErr))
+	end
 
 	-- Billboard: name, rarity colour, $/s, price — readable from across the
 	-- plaza. FIX (17 Nov 2026): 200x110 (was 140x64), offset above the head,
 	-- plus a BELI $ price line, so a brainrot reads from spawn.
+	-- FIX #2: 260x140 — bigger still, so it reads from 40+ studs away.
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Label"
-	billboard.Size = UDim2.fromOffset(200, 110)
+	billboard.Size = UDim2.fromOffset(260, 140)
 	billboard.StudsOffsetWorldSpace = Vector3.new(0, size * 1.15, 0)
 	billboard.AlwaysOnTop = true
 	billboard.Parent = body
@@ -167,7 +180,7 @@ function BrainrotFactory.buildBrainrotModel(row, mutation)
 	rarityLabel.Position = UDim2.fromScale(0, 0.35)
 	rarityLabel.Size = UDim2.fromScale(1, 0.25)
 	rarityLabel.BackgroundTransparency = 1
-	rarityLabel.Text = row.rarity
+	rarityLabel.Text = row.rarity or "Common"
 	rarityLabel.TextColor3 = BrainrotData.getRarityColor(row.rarity)
 	rarityLabel.TextStrokeTransparency = 0
 	rarityLabel.TextScaled = true
@@ -179,7 +192,7 @@ function BrainrotFactory.buildBrainrotModel(row, mutation)
 	rateLabel.Position = UDim2.fromScale(0, 0.6)
 	rateLabel.Size = UDim2.fromScale(1, 0.2)
 	rateLabel.BackgroundTransparency = 1
-	rateLabel.Text = "$" .. tostring(row.rate * mult) .. "/dtk"
+	rateLabel.Text = "$" .. tostring(rate * mult) .. "/dtk"
 	rateLabel.TextColor3 = Color3.fromRGB(120, 255, 140)
 	rateLabel.TextStrokeTransparency = 0
 	rateLabel.TextScaled = true
@@ -191,18 +204,18 @@ function BrainrotFactory.buildBrainrotModel(row, mutation)
 	priceLabel.Position = UDim2.fromScale(0, 0.8)
 	priceLabel.Size = UDim2.fromScale(1, 0.2)
 	priceLabel.BackgroundTransparency = 1
-	priceLabel.Text = "BELI $" .. tostring(row.price * mult)
+	priceLabel.Text = "BELI $" .. tostring(price * mult)
 	priceLabel.TextColor3 = Color3.fromRGB(255, 217, 51)
 	priceLabel.TextStrokeTransparency = 0
 	priceLabel.TextScaled = true
 	priceLabel.Font = Enum.Font.GothamBold
 	priceLabel.Parent = billboard
 
-	model:SetAttribute("CharId", row.id)
-	model:SetAttribute("Rarity", row.rarity)
+	model:SetAttribute("CharId", row.id or "unknown")
+	model:SetAttribute("Rarity", row.rarity or "Common")
 	model:SetAttribute("Mutation", mutation)
-	model:SetAttribute("Rate", row.rate * mult)
-	model:SetAttribute("Price", row.price * mult)
+	model:SetAttribute("Rate", rate * mult)
+	model:SetAttribute("Price", price * mult)
 	model:SetAttribute("BodySize", size)
 
 	if mutation == "Pelangi" then

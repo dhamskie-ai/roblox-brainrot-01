@@ -18,30 +18,43 @@ function MoneyTick.start()
 	task.spawn(function()
 		while true do
 			task.wait(1)
-			for _, player in ipairs(PlayerState.getAllPlayers()) do
-				local income = PlayerState.getIncomeRate(player)
-				if income > 0 then
-					PlayerState.addCash(player, income)
-				end
-				PlayerState.setIncomeLeaderstat(player, income)
-				if MoneyTick.Remotes then
-					local remote = MoneyTick.Remotes:FindFirstChild("MoneyUpdate")
-					if remote then
-						local lockRemaining, lockCooldown = PlayerState.getLockRemaining(player)
-						remote:FireClient(player, {
-							cash = PlayerState.getCash(player),
-							income = income,
-							nextSpawn = math.ceil(ConveyorSpawner.getNextSpawnIn()),
-							waveIn = math.ceil(TsunamiEvent.getSecondsUntilWave()),
-							rebirthReady = RebirthSystem.canRebirth(player),
-							rebirths = PlayerState.getRebirths(player),
-							multiplier = PlayerState.getMultiplier(player),
-							lockRemaining = math.ceil(lockRemaining),
-							lockCooldown = math.ceil(lockCooldown),
-							ownedCount = PlayerState.getOwnedCount(player),
-						})
+			-- FIX #2: the tick loop must NEVER die. One player's bad state
+			-- (or one failed FireClient) is caught per player, and the
+			-- whole tick is caught too — the 1 s heartbeat keeps flowing.
+			local ok, err = pcall(function()
+				for _, player in ipairs(PlayerState.getAllPlayers()) do
+					local pok, perr = pcall(function()
+						local income = PlayerState.getIncomeRate(player)
+						if income > 0 then
+							PlayerState.addCash(player, income)
+						end
+						PlayerState.setIncomeLeaderstat(player, income)
+						if MoneyTick.Remotes then
+							local remote = MoneyTick.Remotes:FindFirstChild("MoneyUpdate")
+							if remote then
+								local lockRemaining, lockCooldown = PlayerState.getLockRemaining(player)
+								remote:FireClient(player, {
+									cash = PlayerState.getCash(player),
+									income = income,
+									nextSpawn = math.ceil(ConveyorSpawner.getNextSpawnIn()),
+									waveIn = math.ceil(TsunamiEvent.getSecondsUntilWave()),
+									rebirthReady = RebirthSystem.canRebirth(player),
+									rebirths = PlayerState.getRebirths(player),
+									multiplier = PlayerState.getMultiplier(player),
+									lockRemaining = math.ceil(lockRemaining),
+									lockCooldown = math.ceil(lockCooldown),
+									ownedCount = PlayerState.getOwnedCount(player),
+								})
+							end
+						end
+					end)
+					if not pok then
+						warn("[PasarBrainrot] MoneyTick gagal untuk " .. player.Name .. ": " .. tostring(perr))
 					end
 				end
+			end)
+			if not ok then
+				warn("[PasarBrainrot] MoneyTick gagal: " .. tostring(err))
 			end
 		end
 	end)

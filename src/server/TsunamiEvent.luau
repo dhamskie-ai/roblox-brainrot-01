@@ -124,7 +124,13 @@ function TsunamiEvent.start()
 				task.wait(waitFor)
 			end
 			if not waveActive then
-				runWave(Config.WAVE_WARN_S)
+				-- FIX #2: satu wave yang throw tidak boleh membunuh loop 90 dtk.
+				local ok, err = pcall(runWave, Config.WAVE_WARN_S)
+				if not ok then
+					warn("[PasarBrainrot] wave gagal: " .. tostring(err))
+					waveActive = false
+					nextWaveAt = os.clock() + Config.WAVE_INTERVAL_S
+				end
 			end
 		end
 	end)

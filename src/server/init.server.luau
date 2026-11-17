@@ -102,35 +102,54 @@ local function buildWorldSigns()
 		{ part = "ThiefSignSouth", text = "SUDUT MALING", color = Color3.fromRGB(255, 89, 89), size = UDim2.new(6, 0, 1.5, 0) },
 	}
 	for _, sign in ipairs(signs) do
-		local board = workspace:FindFirstChild(sign.part)
-		if board then
-			local gui = Instance.new("BillboardGui")
-			gui.Name = "SignGui"
-			gui.Size = sign.size
-			gui.AlwaysOnTop = true
-			gui.Parent = board
-			local label = Instance.new("TextLabel")
-			label.Name = "SignText"
-			label.Size = UDim2.fromScale(1, 1)
-			label.BackgroundTransparency = 1
-			label.Text = sign.text
-			label.TextColor3 = sign.color
-			label.TextStrokeTransparency = 0
-			label.TextScaled = true
-			label.Font = Enum.Font.GothamBold
-			label.Parent = gui
+		local ok, err = pcall(function()
+			local board = workspace:FindFirstChild(sign.part)
+			if board then
+				local gui = Instance.new("BillboardGui")
+				gui.Name = "SignGui"
+				gui.Size = sign.size
+				gui.AlwaysOnTop = true
+				gui.Parent = board
+				local label = Instance.new("TextLabel")
+				label.Name = "SignText"
+				label.Size = UDim2.fromScale(1, 1)
+				label.BackgroundTransparency = 1
+				label.Text = sign.text
+				label.TextColor3 = sign.color
+				label.TextStrokeTransparency = 0
+				label.TextScaled = true
+				label.Font = Enum.Font.GothamBold
+				label.Parent = gui
+			end
+		end)
+		if not ok then
+			warn("[PasarBrainrot] buildWorldSigns gagal untuk " .. sign.part .. ": " .. tostring(err))
 		end
 	end
 end
 
--- Build the world pieces the project JSON does not hold: pedestals + lock posts.
-CarryAndPlace.buildBasePedestals()
-buildWorldSigns()
+-- FIX #2 (17 Nov 2026): startup antipetir. Setiap build/start jalan dalam
+-- pcall-nya sendiri dengan warn(), jadi satu sistem yang gagal TIDAK BOLEH
+-- mematikan init atau sistem sesudahnya. MoneyTick start PALING DULU:
+-- detak MoneyUpdate 1 detik adalah heartbeat HUD, dan sabuk / tsunami /
+-- bot tidak boleh menghalanginya walau mereka gagal total.
+local function safeStart(name, fn)
+	local ok, err = pcall(fn)
+	if not ok then
+		warn("[PasarBrainrot] " .. name .. " gagal: " .. tostring(err))
+	end
+	return ok
+end
 
--- Start every system.
-ConveyorSpawner.start()
-MoneyTick.start()
-TsunamiEvent.start()
-ThiefBot.start()
+-- Build the world pieces the project JSON does not hold: pedestals + lock posts.
+safeStart("buildBasePedestals", CarryAndPlace.buildBasePedestals)
+safeStart("buildWorldSigns", buildWorldSigns)
+
+-- Start every system. MoneyTick first — its 1 s MoneyUpdate is the HUD's
+-- heartbeat; the belt, the wave and the bots must never block it.
+safeStart("MoneyTick", MoneyTick.start)
+safeStart("ConveyorSpawner", ConveyorSpawner.start)
+safeStart("TsunamiEvent", TsunamiEvent.start)
+safeStart("ThiefBot", ThiefBot.start)
 
 print("Pasar Brainrot — Curi, Kumpul, Kaya. Server siap.")

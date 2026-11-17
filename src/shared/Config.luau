@@ -8,7 +8,7 @@ Config.SPAWN_INTERVAL_S = 6
 Config.BELT_SPEED = 4 -- studs per second
 Config.BELT_START_X = -38
 Config.BELT_END_X = 38
-Config.BELT_Y = 1 -- top surface of the belt
+Config.BELT_Y = 2 -- top surface of the belt (FIX #2: belt raised 1 -> 2.5 studs tall)
 Config.BELT_Z = 0
 
 -- Money

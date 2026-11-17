@@ -49,9 +49,11 @@ local incomeLabel = makeLabel("IncomeLabel", gui, UDim2.new(0, 16, 0, 92), UDim2
 incomeLabel.Text = "$0/dtk"
 
 -- Next spawn countdown, top-centre.
+-- FIX #2: default "-" diganti "memuat..." — "-" diam-diam terbaca seperti
+-- server mati, padahal client hanya belum menerima MoneyUpdate pertama.
 local spawnLabel = makeLabel("SpawnLabel", gui, UDim2.new(0.5, -90, 0, 10), UDim2.fromOffset(180, 20), 15, Color3.fromRGB(255, 255, 255))
 spawnLabel.TextXAlignment = Enum.TextXAlignment.Center
-spawnLabel.Text = "Berikutnya: - dtk"
+spawnLabel.Text = "Berikutnya: memuat..."
 
 -- Persistent objective line, top-centre under the countdown.
 local objectiveLabel = makeLabel("ObjectiveLabel", gui, UDim2.new(0.5, -200, 0, 34), UDim2.fromOffset(400, 18), 12, Color3.fromRGB(255, 217, 51))
@@ -67,6 +69,14 @@ waveBanner.Visible = false
 local toastLabel = makeLabel("ToastLabel", gui, UDim2.new(0.5, -200, 0, 82), UDim2.fromOffset(400, 20), 13, Color3.fromRGB(255, 255, 255))
 toastLabel.TextXAlignment = Enum.TextXAlignment.Center
 toastLabel.Visible = false
+
+-- FIX #2: server note — muncul bila 5 detik setelah join belum ada
+-- MoneyUpdate sama sekali (server belum kirim / init bermasalah), supaya
+-- pemain tahu game-nya masih memuat, bukan rusak diam-diam.
+local serverNote = makeLabel("ServerNote", gui, UDim2.new(0.5, -200, 0, 108), UDim2.fromOffset(400, 18), 12, Color3.fromRGB(255, 120, 120))
+serverNote.TextXAlignment = Enum.TextXAlignment.Center
+serverNote.Text = ""
+serverNote.Visible = false
 
 -- Lock button, bottom-right ABOVE the jump button.
 local lockButton = Instance.new("TextButton")
@@ -139,6 +149,17 @@ end
 -- Kept short on purpose: 43 chars fits the 400 px toast label at 13 px.
 showToast("BELI di SABUK → BAWA ke BASE → dapat $/dtk!", 6)
 
+-- FIX #2 watchdog: bila 5 detik setelah join belum ada MoneyUpdate,
+-- tampilkan catatan server (hilang sendiri saat update pertama masuk).
+local gotMoneyUpdate = false
+task.spawn(function()
+	task.wait(5)
+	if not gotMoneyUpdate then
+		serverNote.Text = "Menunggu server... bila tak kunjung masuk, coba rejoin."
+		serverNote.Visible = true
+	end
+end)
+
 -- Remotes are awaited on a BACKGROUND thread: the GUI above is already on
 -- screen while this waits, so a slow server can never hide the HUD.
 task.spawn(function()
@@ -150,6 +171,8 @@ task.spawn(function()
 	local moneyUpdate = Remotes:WaitForChild("MoneyUpdate", 30)
 	if moneyUpdate then
 		moneyUpdate.OnClientEvent:Connect(function(data)
+			gotMoneyUpdate = true
+			serverNote.Visible = false
 			cashLabel.Text = formatMoney(data.cash)
 			local multText = ""
 			if data.multiplier and data.multiplier > 1 then

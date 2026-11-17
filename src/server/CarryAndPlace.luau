@@ -81,20 +81,28 @@ local function makePrompt(parent, actionText, objectText, holdDuration)
 end
 
 -- Refreshes one pedestal's prompts and $/s sign after any change.
+-- FIX #2: direct indexing (part.PedestalSign.SignLabel) throws and kills
+-- the caller if the sign ever failed to build — use FindFirstChild.
 function CarryAndPlace.refreshPedestal(baseIndex, slot)
 	local pedestal = pedestals[baseIndex] and pedestals[baseIndex][slot]
 	if not pedestal then
 		return
 	end
 	local record = pedestal.record
-	local label = pedestal.part.PedestalSign.SignLabel
+	local sign = pedestal.part:FindFirstChild("PedestalSign")
+	local label = sign and sign:FindFirstChild("SignLabel")
+	if label then
+		if record then
+			label.Text = "$" .. tostring(record.rate) .. "/dtk"
+		else
+			label.Text = "KOSONG"
+		end
+	end
 	if record then
-		label.Text = "$" .. tostring(record.rate) .. "/dtk"
 		pedestal.placePrompt.Enabled = false
 		pedestal.sellPrompt.Enabled = true
 		pedestal.stealPrompt.Enabled = true
 	else
-		label.Text = "KOSONG"
 		pedestal.placePrompt.Enabled = true
 		pedestal.sellPrompt.Enabled = false
 		pedestal.stealPrompt.Enabled = false
@@ -106,58 +114,69 @@ function CarryAndPlace.getPedestal(baseIndex, slot)
 end
 
 -- Builds 8 pedestals per base (2 rows of 4) plus a lock post, from Config.BASES.
+-- FIX #2: one base's build runs in its own pcall — a failure on one base
+-- cannot stop the other three from being built.
+local function buildOneBase(baseIndex, base)
+	pedestals[baseIndex] = {}
+	local center = base.pos
+	local slot = 0
+	-- FIX #2: columns 7 studs apart (was 5) — a Mythic body is 7.0 studs
+	-- wide, so two Mythics side by side now only just touch, never overlap.
+	for _, rowZ in ipairs({ -6, 6 }) do
+		for _, colX in ipairs({ -10.5, -3.5, 3.5, 10.5 }) do
+			slot += 1
+			local pos = Vector3.new(center.X + colX, 1.5, center.Z + rowZ)
+			local part = makePedestalPart(baseIndex, slot, pos)
+			local pedestal = {
+				baseIndex = baseIndex,
+				slot = slot,
+				part = part,
+				record = nil,
+			}
+			pedestal.placePrompt = makePrompt(part, "Letakkan", "Brainrot di kepalamu", 0.5)
+			pedestal.sellPrompt = makePrompt(part, "Jual", "50% harga beli kembali", 0.5)
+			pedestal.stealPrompt = makePrompt(part, "Curi!", "Tahan 2 detik", Config.STEAL_HOLD_S)
+			pedestal.placePrompt.Triggered:Connect(function(player)
+				CarryAndPlace.placeOnPedestal(player, baseIndex, slot)
+			end)
+			pedestal.sellPrompt.Triggered:Connect(function(player)
+				CarryAndPlace.sellBrainrot(player, baseIndex, slot)
+			end)
+			pedestal.stealPrompt.Triggered:Connect(function(player)
+				local StealAndLock = require(script.Parent.StealAndLock)
+				StealAndLock.tryStealBrainrot(player, baseIndex, slot)
+			end)
+			pedestals[baseIndex][slot] = pedestal
+			CarryAndPlace.refreshPedestal(baseIndex, slot)
+		end
+	end
+
+	-- Lock post at the base's outer corner: hold E to lock the base 30 s.
+	local lockPost = Instance.new("Part")
+	lockPost.Name = "LockPost_" .. tostring(baseIndex)
+	lockPost.Size = Vector3.new(1, 3, 1)
+	lockPost.Position = Vector3.new(center.X + 10, 2.5, center.Z + 10)
+	lockPost.Color = base.color
+	lockPost.Material = Enum.Material.Neon
+	lockPost.Anchored = true
+	lockPost.Parent = BASE_FOLDER
+	local lockPrompt = makePrompt(lockPost, "Kunci Base", "Aman 30 detik", 0.5)
+	lockPrompt.Triggered:Connect(function(player)
+		local StealAndLock = require(script.Parent.StealAndLock)
+		StealAndLock.lockBaseForPlayer(player)
+	end)
+end
+
 function CarryAndPlace.buildBasePedestals()
 	BASE_FOLDER = Instance.new("Folder")
 	BASE_FOLDER.Name = "Bases"
 	BASE_FOLDER.Parent = workspace
 
 	for baseIndex, base in ipairs(Config.BASES) do
-		pedestals[baseIndex] = {}
-		local center = base.pos
-		local slot = 0
-		for _, rowZ in ipairs({ -6, 6 }) do
-			for _, colX in ipairs({ -7.5, -2.5, 2.5, 7.5 }) do
-				slot += 1
-				local pos = Vector3.new(center.X + colX, 1.5, center.Z + rowZ)
-				local part = makePedestalPart(baseIndex, slot, pos)
-				local pedestal = {
-					baseIndex = baseIndex,
-					slot = slot,
-					part = part,
-					record = nil,
-				}
-				pedestal.placePrompt = makePrompt(part, "Letakkan", "Brainrot di kepalamu", 0.5)
-				pedestal.sellPrompt = makePrompt(part, "Jual", "50% harga beli kembali", 0.5)
-				pedestal.stealPrompt = makePrompt(part, "Curi!", "Tahan 2 detik", Config.STEAL_HOLD_S)
-				pedestal.placePrompt.Triggered:Connect(function(player)
-					CarryAndPlace.placeOnPedestal(player, baseIndex, slot)
-				end)
-				pedestal.sellPrompt.Triggered:Connect(function(player)
-					CarryAndPlace.sellBrainrot(player, baseIndex, slot)
-				end)
-				pedestal.stealPrompt.Triggered:Connect(function(player)
-					local StealAndLock = require(script.Parent.StealAndLock)
-					StealAndLock.tryStealBrainrot(player, baseIndex, slot)
-				end)
-				pedestals[baseIndex][slot] = pedestal
-				CarryAndPlace.refreshPedestal(baseIndex, slot)
-			end
+		local ok, err = pcall(buildOneBase, baseIndex, base)
+		if not ok then
+			warn("[PasarBrainrot] buildBasePedestals gagal untuk base " .. tostring(baseIndex) .. ": " .. tostring(err))
 		end
-
-		-- Lock post at the base's outer corner: hold E to lock the base 30 s.
-		local lockPost = Instance.new("Part")
-		lockPost.Name = "LockPost_" .. tostring(baseIndex)
-		lockPost.Size = Vector3.new(1, 3, 1)
-		lockPost.Position = Vector3.new(center.X + 10, 2.5, center.Z + 10)
-		lockPost.Color = base.color
-		lockPost.Material = Enum.Material.Neon
-		lockPost.Anchored = true
-		lockPost.Parent = BASE_FOLDER
-		local lockPrompt = makePrompt(lockPost, "Kunci Base", "Aman 30 detik", 0.5)
-		lockPrompt.Triggered:Connect(function(player)
-			local StealAndLock = require(script.Parent.StealAndLock)
-			StealAndLock.lockBaseForPlayer(player)
-		end)
 	end
 end
 
@@ -185,6 +204,12 @@ function CarryAndPlace.buyBrainrot(player, model)
 	if not head then
 		return
 	end
+	-- FIX #2: cek PrimaryPart SEBELUM uang dipotong (dulu ceknya sesudah
+	-- spendCash — body nil = uang hilang, brainrot tak didapat).
+	local body = model.PrimaryPart
+	if not body then
+		return
+	end
 	if not PlayerState.spendCash(player, price) then
 		return
 	end
@@ -194,13 +219,15 @@ function CarryAndPlace.buyBrainrot(player, model)
 			part.Anchored = false
 		end
 	end
-	local body = model.PrimaryPart
-	body.CFrame = head.CFrame * CFrame.new(0, 3.2, 0)
+	-- FIX #2: carry height scales with the model — a Mythic body is 7.0
+	-- studs wide, so the fixed 3.2 offset buried it in the player's head.
+	local carryY = (model:GetAttribute("BodySize") or 2) / 2 + 2.2
+	body.CFrame = head.CFrame * CFrame.new(0, carryY, 0)
 	local weld = Instance.new("Weld")
 	weld.Name = "CarryWeld"
 	weld.Part0 = head
 	weld.Part1 = body
-	weld.C0 = CFrame.new(0, 3.2, 0)
+	weld.C0 = CFrame.new(0, carryY, 0)
 	weld.Parent = head
 	PlayerState.setCarried(player, model)
 	playSound(player, "buy")

@@ -18,6 +18,9 @@ local beltModels = {} -- [Model] = true while it walks the belt
 local nextSpawnAt = 0
 
 local function faceEast(model, x)
+	if not model or not model.PrimaryPart then
+		return
+	end
 	local size = model:GetAttribute("BodySize") or 2
 	model:PivotTo(CFrame.new(x, Config.BELT_Y + size / 2, Config.BELT_Z) * CFrame.Angles(0, math.rad(90), 0))
 end
@@ -43,14 +46,27 @@ end
 local function walkBelt(model)
 	task.spawn(function()
 		while model.Parent and beltModels[model] do
-			local pivot = model:GetPivot()
+			-- FIX #2: GetPivot throw bila model dihancurkan antar-tick —
+			-- tangkap, jangan matikan thread jalan ini.
+			local pivotOk, pivot = pcall(function()
+				return model:GetPivot()
+			end)
+			if not pivotOk then
+				return
+			end
 			local x = pivot.Position.X + Config.BELT_SPEED * 0.1
 			if x >= Config.BELT_END_X then
 				ConveyorSpawner.removeFromBelt(model)
 				model:Destroy()
 				return
 			end
-			faceEast(model, x)
+			-- FIX #2: satu langkah jalan yang throw (mis. model hancur di
+			-- tengah jalan) tidak boleh mematikan thread jalan ini.
+			local ok, err = pcall(faceEast, model, x)
+			if not ok then
+				warn("[PasarBrainrot] walkBelt gagal: " .. tostring(err))
+				return
+			end
 			task.wait(0.1)
 		end
 	end)
@@ -59,7 +75,13 @@ end
 function ConveyorSpawner.spawnNextBrainrot(startX)
 	local row = BrainrotData.rollCharacter()
 	local mutation = BrainrotFactory.rollMutation()
-	local model = BrainrotFactory.buildBrainrotModel(row, mutation)
+	-- FIX #2: satu roll/model yang gagal build tidak boleh melempar ke
+	-- pemanggil (start() / loop timer) — kembalikan nil saja.
+	local ok, model = pcall(BrainrotFactory.buildBrainrotModel, row, mutation)
+	if not ok or typeof(model) ~= "Instance" or not model.PrimaryPart then
+		warn("[PasarBrainrot] buildBrainrotModel gagal: " .. tostring(model))
+		return nil
+	end
 	model.Parent = workspace
 
 	local prompt = Instance.new("ProximityPrompt")
@@ -91,7 +113,11 @@ function ConveyorSpawner.returnToBelt(model)
 			part.Anchored = true
 		end
 	end
-	local prompt = model.PrimaryPart:FindFirstChildOfClass("ProximityPrompt")
+	local primary = model.PrimaryPart
+	if not primary then
+		return
+	end
+	local prompt = primary:FindFirstChildOfClass("ProximityPrompt")
 	if not prompt then
 		prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Beli"
@@ -124,9 +150,14 @@ function ConveyorSpawner.start()
 	-- FIX (17 Nov 2026): three brainrots are ON the belt the moment the
 	-- server starts (spaced 12 studs apart), so the first player never
 	-- joins to an empty belt. The regular 6 s timer starts after them.
-	ConveyorSpawner.spawnNextBrainrot(Config.BELT_START_X)
-	ConveyorSpawner.spawnNextBrainrot(Config.BELT_START_X + 12)
-	ConveyorSpawner.spawnNextBrainrot(Config.BELT_START_X + 24)
+	-- FIX #2: tiap spawn awal dalam pcall sendiri — satu roll gagal tidak
+	-- boleh membatalkan dua spawn lainnya atau mematikan init.
+	for _, offset in ipairs({ 0, 12, 24 }) do
+		local ok, err = pcall(ConveyorSpawner.spawnNextBrainrot, Config.BELT_START_X + offset)
+		if not ok then
+			warn("[PasarBrainrot] spawn awal gagal: " .. tostring(err))
+		end
+	end
 	nextSpawnAt = os.clock() + Config.SPAWN_INTERVAL_S
 	task.spawn(function()
 		while true do
@@ -135,7 +166,12 @@ function ConveyorSpawner.start()
 				task.wait(waitFor)
 			end
 			nextSpawnAt = os.clock() + Config.SPAWN_INTERVAL_S
-			ConveyorSpawner.spawnNextBrainrot()
+			-- FIX #2: satu spawn yang throw tidak boleh membunuh loop
+			-- timer selamanya — spawn berikutnya tetap jalan 6 dtk lagi.
+			local ok, err = pcall(ConveyorSpawner.spawnNextBrainrot)
+			if not ok then
+				warn("[PasarBrainrot] spawn timer gagal: " .. tostring(err))
+			end
 		end
 	end)
 end

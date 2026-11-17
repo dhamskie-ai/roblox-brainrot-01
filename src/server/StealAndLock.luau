@@ -85,19 +85,21 @@ function StealAndLock.tryStealBrainrot(stealer, baseIndex, slot)
 		end
 		local character = stealer.Character
 		local head = character and character:FindFirstChild("Head")
-		if head then
+		local body = model and model.PrimaryPart
+		if head and body then
 			for _, part in ipairs(model:GetDescendants()) do
 				if part:IsA("BasePart") then
 					part.Anchored = false
 				end
 			end
-			local body = model.PrimaryPart
-			body.CFrame = head.CFrame * CFrame.new(0, 3.2, 0)
+			-- FIX #2: tinggi bawa ikut ukuran model (lihat CarryAndPlace).
+			local carryY = (model:GetAttribute("BodySize") or 2) / 2 + 2.2
+			body.CFrame = head.CFrame * CFrame.new(0, carryY, 0)
 			local weld = Instance.new("Weld")
 			weld.Name = "CarryWeld"
 			weld.Part0 = head
 			weld.Part1 = body
-			weld.C0 = CFrame.new(0, 3.2, 0)
+			weld.C0 = CFrame.new(0, carryY, 0)
 			weld.Parent = head
 			PlayerState.setCarried(stealer, model)
 		end
