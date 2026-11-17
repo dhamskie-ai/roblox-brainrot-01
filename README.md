@@ -50,7 +50,7 @@ with `vendor/makefun-roblox.ts`, the kit's copy, unchanged.
   bright dusk lighting (ClockTime 17.5, Ambient 0.62, Brightness 3).
 - `src/shared/Config.luau` — every tuning number in one place.
 - `src/shared/BrainrotData.luau` — the 12-character cast table + rarity weights and colours.
-- `src/server/` — `Main.server.luau` (bootstrap), `BrainrotFactory`, `ConveyorSpawner`, `CarryAndPlace`,
+- `src/server/` — `init.server.luau` (bootstrap), `BrainrotFactory`, `ConveyorSpawner`, `CarryAndPlace`,
   `MoneyTick`, `StealAndLock`, `TsunamiEvent`, `ThiefBot`, `RebirthSystem`, `PlayerState` (all player state).
 - `src/client/Game.client.luau` — HUD (cash, income, next spawn, wave banner, lock/rebirth buttons, toasts).
 - `screenshots/` — 4 gameplay captures from the phone (1-thumbnail, 2-conveyor, 3-base, 4-wave); the first by

@@ -5,10 +5,7 @@
 
 local Players = game:GetService("Players")
 
-local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared", 10)
-if not Shared then
-	error("[PasarBrainrot] ReplicatedStorage.Shared tidak ditemukan (10 dtk)")
-end
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 
 local PlayerState = {}

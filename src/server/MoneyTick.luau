@@ -2,10 +2,7 @@
 -- cash += sum of owned rates x rebirth multiplier. Updates the Cash and
 -- Income leaderstats and pushes the live HUD numbers to that player only.
 
-local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared", 10)
-if not Shared then
-	error("[PasarBrainrot] ReplicatedStorage.Shared tidak ditemukan (10 dtk)")
-end
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local PlayerState = require(script.Parent.PlayerState)
 local ConveyorSpawner = require(script.Parent.ConveyorSpawner)
