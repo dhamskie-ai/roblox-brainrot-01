@@ -90,7 +90,10 @@ end)
 -- built here at runtime (board part name -> text, colour, billboard size).
 local function buildWorldSigns()
 	local signs = {
-		{ part = "ConveyorSign", text = "SABUK BRAINROT", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(7, 0, 2, 0) },
+		{ part = "ConveyorSign", text = "SABUK BRAINROT", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(10, 0, 3, 0) },
+		-- FIX (17 Nov 2026): floating beacon label above the belt beam, so
+		-- the belt reads from every spawn, even at 60 studs away.
+		{ part = "BeltBeacon", text = "▼ SABUK BRAINROT ▼", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(26, 0, 4, 0) },
 		{ part = "TitleSign", text = "PASAR BRAINROT", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(18, 0, 3, 0) },
 		{ part = "BaseSignRed", text = "BASE MERAH", color = Color3.fromRGB(255, 89, 89), size = UDim2.new(10, 0, 2, 0) },
 		{ part = "BaseSignBlue", text = "BASE BIRU", color = Color3.fromRGB(102, 166, 255), size = UDim2.new(10, 0, 2, 0) },

@@ -1,8 +1,13 @@
 -- Game.client.luau — the HUD of Pasar Brainrot. A ScreenGui OVER the 3D
--- world, never the game itself. All sizes are small in code on purpose:
--- on Dham's phone the GUI renders at ~2.48x code size (roblox-game-01 rev 7),
--- so every size here is already divided by ~2.5. Verified numerically on
--- 2048x984: 0 overlaps, middle of the screen clear of HUD.
+-- world, never the game itself. FIX (17 Nov 2026): the GUI is built FIRST,
+-- with default text, BEFORE any WaitForChild — the old version waited up to
+-- 30 s for ReplicatedStorage.Remotes before creating a single label, so a
+-- fresh player saw NO HUD at all. Remotes are now awaited on a background
+-- thread and only wire the listeners.
+-- All sizes are small in code on purpose: on Dham's phone the GUI renders
+-- at ~2.48x code size (roblox-game-01 rev 7), so every size here is already
+-- divided by ~2.5. Verified numerically on 2048x984: 0 overlaps, middle of
+-- the screen clear of HUD, nothing in the top-left corner.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,7 +15,6 @@ local SoundService = game:GetService("SoundService")
 local ContentProvider = game:GetService("ContentProvider")
 
 local player = Players.LocalPlayer
-local Remotes = ReplicatedStorage:WaitForChild("Remotes", 30)
 
 local function makeLabel(name, parent, position, size, textSize, color)
 	local label = Instance.new("TextLabel")
@@ -29,6 +33,7 @@ local function makeLabel(name, parent, position, size, textSize, color)
 	return label
 end
 
+-- GUI FIRST: created immediately, with readable default text.
 local gui = Instance.new("ScreenGui")
 gui.Name = "PasarBrainrotGui"
 gui.ResetOnSpawn = false
@@ -36,25 +41,30 @@ gui.IgnoreGuiInset = true
 gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Cash, top-left under the Roblox menu buttons.
-local cashLabel = makeLabel("CashLabel", gui, UDim2.new(0, 16, 0, 64), UDim2.fromOffset(120, 16), 14, Color3.fromRGB(120, 255, 140))
+local cashLabel = makeLabel("CashLabel", gui, UDim2.new(0, 16, 0, 64), UDim2.fromOffset(150, 24), 18, Color3.fromRGB(120, 255, 140))
 cashLabel.Text = "$250"
 
 -- Income per second, directly under cash.
-local incomeLabel = makeLabel("IncomeLabel", gui, UDim2.new(0, 16, 0, 82), UDim2.fromOffset(120, 14), 12, Color3.fromRGB(255, 255, 255))
+local incomeLabel = makeLabel("IncomeLabel", gui, UDim2.new(0, 16, 0, 92), UDim2.fromOffset(150, 20), 15, Color3.fromRGB(255, 255, 255))
 incomeLabel.Text = "$0/dtk"
 
 -- Next spawn countdown, top-centre.
-local spawnLabel = makeLabel("SpawnLabel", gui, UDim2.new(0.5, -65, 0, 10), UDim2.fromOffset(130, 14), 12, Color3.fromRGB(255, 255, 255))
+local spawnLabel = makeLabel("SpawnLabel", gui, UDim2.new(0.5, -90, 0, 10), UDim2.fromOffset(180, 20), 15, Color3.fromRGB(255, 255, 255))
 spawnLabel.TextXAlignment = Enum.TextXAlignment.Center
 spawnLabel.Text = "Berikutnya: - dtk"
 
+-- Persistent objective line, top-centre under the countdown.
+local objectiveLabel = makeLabel("ObjectiveLabel", gui, UDim2.new(0.5, -200, 0, 34), UDim2.fromOffset(400, 18), 12, Color3.fromRGB(255, 217, 51))
+objectiveLabel.TextXAlignment = Enum.TextXAlignment.Center
+objectiveLabel.Text = "BELI BRAINROT DI SABUK → BAWA KE BASE → DAPAT $/DTK"
+
 -- Tsunami warning banner, centre-top, only during the warning.
-local waveBanner = makeLabel("WaveBanner", gui, UDim2.new(0.5, -115, 0, 28), UDim2.fromOffset(230, 16), 13, Color3.fromRGB(255, 80, 80))
+local waveBanner = makeLabel("WaveBanner", gui, UDim2.new(0.5, -160, 0, 56), UDim2.fromOffset(320, 22), 16, Color3.fromRGB(255, 80, 80))
 waveBanner.TextXAlignment = Enum.TextXAlignment.Center
 waveBanner.Visible = false
 
 -- Toast messages (bought, stolen, locked...), centre-top under the banner.
-local toastLabel = makeLabel("ToastLabel", gui, UDim2.new(0.5, -110, 0, 48), UDim2.fromOffset(220, 14), 12, Color3.fromRGB(255, 255, 255))
+local toastLabel = makeLabel("ToastLabel", gui, UDim2.new(0.5, -200, 0, 82), UDim2.fromOffset(400, 20), 13, Color3.fromRGB(255, 255, 255))
 toastLabel.TextXAlignment = Enum.TextXAlignment.Center
 toastLabel.Visible = false
 
@@ -62,13 +72,13 @@ toastLabel.Visible = false
 local lockButton = Instance.new("TextButton")
 lockButton.Name = "LockButton"
 lockButton.AnchorPoint = Vector2.new(1, 1)
-lockButton.Position = UDim2.new(1, -16, 1, -150)
-lockButton.Size = UDim2.fromOffset(72, 28)
+lockButton.Position = UDim2.new(1, -16, 1, -160)
+lockButton.Size = UDim2.fromOffset(100, 36)
 lockButton.BackgroundColor3 = Color3.fromRGB(40, 90, 200)
 lockButton.BorderSizePixel = 0
 lockButton.Text = "KUNCI"
 lockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-lockButton.TextSize = 12
+lockButton.TextSize = 15
 lockButton.Font = Enum.Font.GothamBold
 lockButton.Parent = gui
 
@@ -76,13 +86,13 @@ lockButton.Parent = gui
 local rebirthButton = Instance.new("TextButton")
 rebirthButton.Name = "RebirthButton"
 rebirthButton.AnchorPoint = Vector2.new(0.5, 1)
-rebirthButton.Position = UDim2.new(0.5, 0, 1, -100)
-rebirthButton.Size = UDim2.fromOffset(90, 28)
+rebirthButton.Position = UDim2.new(0.5, 0, 1, -110)
+rebirthButton.Size = UDim2.fromOffset(110, 36)
 rebirthButton.BackgroundColor3 = Color3.fromRGB(255, 190, 40)
 rebirthButton.BorderSizePixel = 0
 rebirthButton.Text = "REBIRTH!"
 rebirthButton.TextColor3 = Color3.fromRGB(60, 30, 0)
-rebirthButton.TextSize = 12
+rebirthButton.TextSize = 15
 rebirthButton.Font = Enum.Font.GothamBold
 rebirthButton.Visible = false
 rebirthButton.Parent = gui
@@ -97,12 +107,18 @@ local function formatMoney(amount)
 	return "$" .. text .. out
 end
 
-local function showToast(message)
+-- A toast token stops an older toast's hide-timer from hiding a newer one.
+local toastToken = 0
+local function showToast(message, seconds)
+	toastToken += 1
+	local token = toastToken
 	toastLabel.Text = message
 	toastLabel.Visible = true
 	task.spawn(function()
-		task.wait(3)
-		toastLabel.Visible = false
+		task.wait(seconds or 3)
+		if token == toastToken then
+			toastLabel.Visible = false
+		end
 	end)
 end
 
@@ -119,7 +135,18 @@ local function showWaveWarning(seconds)
 	end)
 end
 
-if Remotes then
+-- Onboarding toast on join: the game loop in one line, visible ~6 s.
+-- Kept short on purpose: 43 chars fits the 400 px toast label at 13 px.
+showToast("BELI di SABUK → BAWA ke BASE → dapat $/dtk!", 6)
+
+-- Remotes are awaited on a BACKGROUND thread: the GUI above is already on
+-- screen while this waits, so a slow server can never hide the HUD.
+task.spawn(function()
+	local Remotes = ReplicatedStorage:WaitForChild("Remotes", 30)
+	if not Remotes then
+		return
+	end
+
 	local moneyUpdate = Remotes:WaitForChild("MoneyUpdate", 30)
 	if moneyUpdate then
 		moneyUpdate.OnClientEvent:Connect(function(data)
@@ -151,7 +178,9 @@ if Remotes then
 
 	local toastRemote = Remotes:WaitForChild("ToastMessage", 30)
 	if toastRemote then
-		toastRemote.OnClientEvent:Connect(showToast)
+		toastRemote.OnClientEvent:Connect(function(message)
+			showToast(message)
+		end)
 	end
 
 	local soundEvent = Remotes:WaitForChild("SoundEvent", 30)
@@ -184,7 +213,7 @@ if Remotes then
 			requestRebirth:FireServer()
 		end)
 	end
-end
+end)
 
 -- Preload the sounds off the main thread; every Play() is already in pcall.
 task.spawn(function()

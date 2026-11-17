@@ -141,17 +141,19 @@ function BrainrotFactory.buildBrainrotModel(row, mutation)
 
 	buildAccessory(body, row.accessory, size, bodyColor)
 
-	-- Billboard: name, rarity colour, $/s — readable from across the plaza.
+	-- Billboard: name, rarity colour, $/s, price — readable from across the
+	-- plaza. FIX (17 Nov 2026): 200x110 (was 140x64), offset above the head,
+	-- plus a BELI $ price line, so a brainrot reads from spawn.
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Label"
-	billboard.Size = UDim2.fromOffset(140, 64)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, size * 0.95, 0)
+	billboard.Size = UDim2.fromOffset(200, 110)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, size * 1.15, 0)
 	billboard.AlwaysOnTop = true
 	billboard.Parent = body
 
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "NameLabel"
-	nameLabel.Size = UDim2.fromScale(1, 0.4)
+	nameLabel.Size = UDim2.fromScale(1, 0.35)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = displayName
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -162,8 +164,8 @@ function BrainrotFactory.buildBrainrotModel(row, mutation)
 
 	local rarityLabel = Instance.new("TextLabel")
 	rarityLabel.Name = "RarityLabel"
-	rarityLabel.Position = UDim2.fromScale(0, 0.4)
-	rarityLabel.Size = UDim2.fromScale(1, 0.3)
+	rarityLabel.Position = UDim2.fromScale(0, 0.35)
+	rarityLabel.Size = UDim2.fromScale(1, 0.25)
 	rarityLabel.BackgroundTransparency = 1
 	rarityLabel.Text = row.rarity
 	rarityLabel.TextColor3 = BrainrotData.getRarityColor(row.rarity)
@@ -174,8 +176,8 @@ function BrainrotFactory.buildBrainrotModel(row, mutation)
 
 	local rateLabel = Instance.new("TextLabel")
 	rateLabel.Name = "RateLabel"
-	rateLabel.Position = UDim2.fromScale(0, 0.7)
-	rateLabel.Size = UDim2.fromScale(1, 0.3)
+	rateLabel.Position = UDim2.fromScale(0, 0.6)
+	rateLabel.Size = UDim2.fromScale(1, 0.2)
 	rateLabel.BackgroundTransparency = 1
 	rateLabel.Text = "$" .. tostring(row.rate * mult) .. "/dtk"
 	rateLabel.TextColor3 = Color3.fromRGB(120, 255, 140)
@@ -183,6 +185,18 @@ function BrainrotFactory.buildBrainrotModel(row, mutation)
 	rateLabel.TextScaled = true
 	rateLabel.Font = Enum.Font.GothamBold
 	rateLabel.Parent = billboard
+
+	local priceLabel = Instance.new("TextLabel")
+	priceLabel.Name = "PriceLabel"
+	priceLabel.Position = UDim2.fromScale(0, 0.8)
+	priceLabel.Size = UDim2.fromScale(1, 0.2)
+	priceLabel.BackgroundTransparency = 1
+	priceLabel.Text = "BELI $" .. tostring(row.price * mult)
+	priceLabel.TextColor3 = Color3.fromRGB(255, 217, 51)
+	priceLabel.TextStrokeTransparency = 0
+	priceLabel.TextScaled = true
+	priceLabel.Font = Enum.Font.GothamBold
+	priceLabel.Parent = billboard
 
 	model:SetAttribute("CharId", row.id)
 	model:SetAttribute("Rarity", row.rarity)

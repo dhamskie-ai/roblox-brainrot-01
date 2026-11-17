@@ -56,7 +56,7 @@ local function walkBelt(model)
 	end)
 end
 
-function ConveyorSpawner.spawnNextBrainrot()
+function ConveyorSpawner.spawnNextBrainrot(startX)
 	local row = BrainrotData.rollCharacter()
 	local mutation = BrainrotFactory.rollMutation()
 	local model = BrainrotFactory.buildBrainrotModel(row, mutation)
@@ -76,7 +76,7 @@ function ConveyorSpawner.spawnNextBrainrot()
 	end)
 
 	beltModels[model] = true
-	faceEast(model, Config.BELT_START_X)
+	faceEast(model, startX or Config.BELT_START_X)
 	walkBelt(model)
 	return model
 end
@@ -121,7 +121,13 @@ function ConveyorSpawner.removeFromBelt(model)
 end
 
 function ConveyorSpawner.start()
-	nextSpawnAt = os.clock() + 2
+	-- FIX (17 Nov 2026): three brainrots are ON the belt the moment the
+	-- server starts (spaced 12 studs apart), so the first player never
+	-- joins to an empty belt. The regular 6 s timer starts after them.
+	ConveyorSpawner.spawnNextBrainrot(Config.BELT_START_X)
+	ConveyorSpawner.spawnNextBrainrot(Config.BELT_START_X + 12)
+	ConveyorSpawner.spawnNextBrainrot(Config.BELT_START_X + 24)
+	nextSpawnAt = os.clock() + Config.SPAWN_INTERVAL_S
 	task.spawn(function()
 		while true do
 			local waitFor = nextSpawnAt - os.clock()
