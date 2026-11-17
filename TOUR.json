@@ -1,1 +1,1 @@
-{"tour": 1, "steps": [{"screenshot": "1-start.png"}, {"screenshot": "2-play.png", "keys": ["Right"], "wait_ms": 1000}, {"screenshot": "3-end.png", "keys": ["Down"], "wait_ms": 1000}]}
+{"steps":[{"screenshot":"1-thumbnail.jpg"},{"screenshot":"2-conveyor.jpg"},{"screenshot":"3-base.jpg"},{"call":{"fn":"triggerWave","module":"ServerScriptService.Server.TsunamiEvent","on":"Server"},"screenshot":"4-wave.jpg"}],"tour":1}
