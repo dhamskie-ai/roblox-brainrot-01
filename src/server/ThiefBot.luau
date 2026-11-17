@@ -7,7 +7,10 @@
 local PathfindingService = game:GetService("PathfindingService")
 local Players = game:GetService("Players")
 
-local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared", 10)
+if not Shared then
+	error("[PasarBrainrot] ReplicatedStorage.Shared tidak ditemukan (10 dtk)")
+end
 local Config = require(Shared.Config)
 local PlayerState = require(script.Parent.PlayerState)
 local StealAndLock = require(script.Parent.StealAndLock)

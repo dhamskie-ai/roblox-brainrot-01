@@ -78,6 +78,13 @@ serverNote.TextXAlignment = Enum.TextXAlignment.Center
 serverNote.Text = ""
 serverNote.Visible = false
 
+-- FIX #3: server status line — shows ReplicatedStorage.ServerStatus live
+-- ("OK | jam | pemain | sabuk", or the first server error). Dham's next
+-- screenshot must show this line: it names the server's state.
+local statusLabel = makeLabel("ServerStatusLabel", gui, UDim2.new(0.5, -200, 0, 132), UDim2.fromOffset(400, 18), 12, Color3.fromRGB(140, 220, 255))
+statusLabel.TextXAlignment = Enum.TextXAlignment.Center
+statusLabel.Text = "Server: memuat..."
+
 -- Lock button, bottom-right ABOVE the jump button.
 local lockButton = Instance.new("TextButton")
 lockButton.Name = "LockButton"
@@ -151,13 +158,45 @@ showToast("BELI di SABUK → BAWA ke BASE → dapat $/dtk!", 6)
 
 -- FIX #2 watchdog: bila 5 detik setelah join belum ada MoneyUpdate,
 -- tampilkan catatan server (hilang sendiri saat update pertama masuk).
+-- FIX #3: bedakan dua mode gagal — "Remotes belum ada" vs "Remotes ada,
+-- MoneyUpdate tidak datang" — plus "Remotes tidak ditemukan (30 dtk)".
 local gotMoneyUpdate = false
+local remotesFound = false
 task.spawn(function()
 	task.wait(5)
 	if not gotMoneyUpdate then
-		serverNote.Text = "Menunggu server... bila tak kunjung masuk, coba rejoin."
+		if remotesFound then
+			serverNote.Text = "Remotes ada, MoneyUpdate tidak datang."
+		else
+			serverNote.Text = "Menunggu server... bila tak kunjung masuk, coba rejoin."
+		end
 		serverNote.Visible = true
 	end
+	task.wait(25) -- 30 detik sejak join
+	if not gotMoneyUpdate and not remotesFound then
+		serverNote.Text = "Remotes tidak ditemukan (30 dtk) — coba rejoin."
+		serverNote.Visible = true
+	end
+end)
+
+-- FIX #3: baca ServerStatus saat join dan tampilkan di HUD; berubah live
+-- tiap heartbeat server (5 detik) atau saat error pertama tercatat.
+-- Dipotong ke 48 karakter supaya muat di label 400 px.
+task.spawn(function()
+	local statusValue = ReplicatedStorage:WaitForChild("ServerStatus", 30)
+	if not statusValue then
+		statusLabel.Text = "Server: status tidak ada (server mati sebelum boot)"
+		return
+	end
+	local function refreshStatus()
+		local text = tostring(statusValue.Value)
+		if #text > 48 then
+			text = string.sub(text, 1, 48) .. "..."
+		end
+		statusLabel.Text = "Server: " .. text
+	end
+	refreshStatus()
+	statusValue.Changed:Connect(refreshStatus)
 end)
 
 -- Remotes are awaited on a BACKGROUND thread: the GUI above is already on
@@ -167,6 +206,7 @@ task.spawn(function()
 	if not Remotes then
 		return
 	end
+	remotesFound = true
 
 	local moneyUpdate = Remotes:WaitForChild("MoneyUpdate", 30)
 	if moneyUpdate then
