@@ -4,7 +4,10 @@
 -- (hold E 0.5 s, or tap on mobile); the buy itself lives in CarryAndPlace,
 -- wired in by init.server.luau as ConveyorSpawner.buyHandler.
 
-local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared", 10)
+if not Shared then
+	error("[PasarBrainrot] ReplicatedStorage.Shared tidak ditemukan (10 dtk)")
+end
 local Config = require(Shared.Config)
 local BrainrotData = require(Shared.BrainrotData)
 local BrainrotFactory = require(script.Parent.BrainrotFactory)
