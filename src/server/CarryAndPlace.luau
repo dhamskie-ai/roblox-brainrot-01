@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: MIT
 -- CarryAndPlace.luau — buy a brainrot off the belt, carry it above your
 -- head, place it on one of your base's 8 pedestals, sell it back for half
 -- price. Also builds the pedestals, the base lock posts and their prompts
@@ -52,11 +53,15 @@ local function makePedestalPart(base, slot, position)
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Parent = BASE_FOLDER
 
+	-- FIX #4: pedestal sign is NOT AlwaysOnTop any more, hides beyond
+	-- 45 studs, fixed TextSize — 32 AlwaysOnTop "KOSONG" signs stacking
+	-- across the plaza was the overlapping-text mess in Dham's screenshot.
 	local sign = Instance.new("BillboardGui")
 	sign.Name = "PedestalSign"
 	sign.Size = UDim2.fromOffset(110, 28)
 	sign.StudsOffsetWorldSpace = Vector3.new(0, 1.6, 0)
-	sign.AlwaysOnTop = true
+	sign.AlwaysOnTop = false
+	sign.MaxDistance = 45
 	sign.Parent = part
 
 	local label = Instance.new("TextLabel")
@@ -66,7 +71,9 @@ local function makePedestalPart(base, slot, position)
 	label.Text = "KOSONG"
 	label.TextColor3 = Color3.fromRGB(255, 255, 255)
 	label.TextStrokeTransparency = 0
-	label.TextScaled = true
+	label.TextScaled = false
+	label.TextSize = 14
+	label.TextTruncate = Enum.TextTruncate.AtEnd
 	label.Font = Enum.Font.GothamBold
 	label.Parent = sign
 	return part

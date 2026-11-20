@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: MIT
 -- ConveyorSpawner.luau — the Sabuk Brainrot: every SPAWN_INTERVAL_S a
 -- brainrot appears at the west end of the belt, walks east at BELT_SPEED,
 -- and despawns at the east end if nobody buys it. Buying is a ProximityPrompt
@@ -20,12 +21,15 @@ ConveyorSpawner.buyHandler = nil
 local beltModels = {} -- [Model] = true while it walks the belt
 local nextSpawnAt = 0
 
+-- FIX #4: gentle walk bob (±0.15 stud) + sway (±5°) so the belt feels alive.
 local function faceEast(model, x)
 	if not model or not model.PrimaryPart then
 		return
 	end
 	local size = model:GetAttribute("BodySize") or 2
-	model:PivotTo(CFrame.new(x, Config.BELT_Y + size / 2, Config.BELT_Z) * CFrame.Angles(0, math.rad(90), 0))
+	local bob = math.sin(os.clock() * 5 + x * 0.3) * 0.15
+	local sway = math.sin(os.clock() * 2 + x * 0.2) * 5
+	model:PivotTo(CFrame.new(x, Config.BELT_Y + size / 2 + bob, Config.BELT_Z) * CFrame.Angles(0, math.rad(90 + sway), 0))
 end
 
 function ConveyorSpawner.isOnBelt(model)
@@ -76,6 +80,10 @@ local function walkBelt(model)
 end
 
 function ConveyorSpawner.spawnNextBrainrot(startX)
+	-- FIX #4: belt cap — never more than BELT_MAX_MODELS walking at once.
+	if ConveyorSpawner.getBeltCount() >= (Config.BELT_MAX_MODELS or 7) then
+		return nil
+	end
 	local row = BrainrotData.rollCharacter()
 	local mutation = BrainrotFactory.rollMutation()
 	-- FIX #2: satu roll/model yang gagal build tidak boleh melempar ke
@@ -150,12 +158,12 @@ function ConveyorSpawner.removeFromBelt(model)
 end
 
 function ConveyorSpawner.start()
-	-- FIX (17 Nov 2026): three brainrots are ON the belt the moment the
-	-- server starts (spaced 12 studs apart), so the first player never
-	-- joins to an empty belt. The regular 6 s timer starts after them.
+	-- FIX #4: six brainrots are ON the belt the moment the server starts
+	-- (spaced 10 studs apart — a 7.0-stud Mythic body never overlaps its
+	-- neighbour), so the first player never joins to an empty belt.
 	-- FIX #2: tiap spawn awal dalam pcall sendiri — satu roll gagal tidak
-	-- boleh membatalkan dua spawn lainnya atau mematikan init.
-	for _, offset in ipairs({ 0, 12, 24 }) do
+	-- boleh membatalkan spawn lainnya atau mematikan init.
+	for _, offset in ipairs(Config.INITIAL_SPAWN_OFFSETS or { 0, 10, 20, 30, 40, 50 }) do
 		local ok, err = pcall(ConveyorSpawner.spawnNextBrainrot, Config.BELT_START_X + offset)
 		if not ok then
 			warn("[PasarBrainrot] spawn awal gagal: " .. tostring(err))

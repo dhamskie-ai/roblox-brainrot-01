@@ -1,15 +1,18 @@
+-- SPDX-License-Identifier: MIT
 -- Config.luau — every tuning number of Pasar Brainrot in one place.
 -- Server and client both read this; nothing else hardcodes a number.
 
 local Config = {}
 
 -- Conveyor belt (west -> east, middle of the plaza)
-Config.SPAWN_INTERVAL_S = 6
+Config.SPAWN_INTERVAL_S = 3 -- FIX #4: was 6 — busier belt
 Config.BELT_SPEED = 4 -- studs per second
 Config.BELT_START_X = -38
 Config.BELT_END_X = 38
 Config.BELT_Y = 2 -- top surface of the belt (FIX #2: belt raised 1 -> 2.5 studs tall)
 Config.BELT_Z = 0
+Config.BELT_MAX_MODELS = 7 -- FIX #4: max brainrots walking the belt at once
+Config.INITIAL_SPAWN_OFFSETS = { 0, 10, 20, 30, 40, 50 } -- FIX #4: 6 on the belt at server start (was 3)
 
 -- Money
 Config.START_CASH = 250

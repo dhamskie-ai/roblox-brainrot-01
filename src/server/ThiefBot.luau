@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: MIT
 -- ThiefBot.luau — 2 thief bots roam the plaza so the game has tension
 -- even with one human player. A bot picks a random occupied pedestal,
 -- walks there with PathfindingService, holds 2 s to steal, then runs to
@@ -89,11 +90,16 @@ local function buildBotModel(name, color, spawnPos)
 	humanoid.WalkSpeed = 12
 	humanoid.Parent = model
 
+	-- FIX #4: MALING! label is NOT AlwaysOnTop any more, hides beyond
+	-- 60 studs, fixed TextSize — it used to balloon over the HUD/server
+	-- status bar whenever a bot walked near the camera. The steal itself
+	-- is still announced via the toast channel (StealAndLock.toast).
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Label"
-	billboard.Size = UDim2.fromOffset(90, 24)
+	billboard.Size = UDim2.fromOffset(70, 20)
 	billboard.StudsOffsetWorldSpace = Vector3.new(0, 3.5, 0)
-	billboard.AlwaysOnTop = true
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 60
 	billboard.Parent = head
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
@@ -101,7 +107,8 @@ local function buildBotModel(name, color, spawnPos)
 	label.Text = "MALING!"
 	label.TextColor3 = Color3.fromRGB(255, 60, 60)
 	label.TextStrokeTransparency = 0
-	label.TextScaled = true
+	label.TextScaled = false
+	label.TextSize = 14
 	label.Font = Enum.Font.GothamBold
 	label.Parent = billboard
 
@@ -187,57 +194,57 @@ local function botBrain(bot)
 			local ok, err = pcall(function()
 				task.wait(2 + math.random() * 3)
 				local owned = PlayerState.getAllOwnedPedestals()
-			if #owned == 0 then
-				-- Nothing to steal: wander to a random plaza spot.
-				local wander = Vector3.new(math.random(-50, 50), 0, math.random(-50, 50))
-				moveBotTo(bot, wander)
-			else
-				local target = owned[math.random(1, #owned)]
-				local pedestal = CarryAndPlace.getPedestal(target.baseIndex, target.slot)
-				if pedestal then
-					local dest = pedestal.part.Position + Vector3.new(0, 1, 0)
-					local arrived = moveBotTo(bot, dest)
-					if arrived and pedestal.record then
-						task.wait(Config.BOT_STEAL_HOLD_S)
-						if pedestal.record then
-							local model = StealAndLock.tryStealBrainrotForBot(target.baseIndex, target.slot)
-							if model then
-								-- Carry it above the bot's head and run to the corner.
-								for _, part in ipairs(model:GetDescendants()) do
-									if part:IsA("BasePart") then
-										part.Anchored = false
+				if #owned == 0 then
+					-- Nothing to steal: wander to a random plaza spot.
+					local wander = Vector3.new(math.random(-50, 50), 0, math.random(-50, 50))
+					moveBotTo(bot, wander)
+				else
+					local target = owned[math.random(1, #owned)]
+					local pedestal = CarryAndPlace.getPedestal(target.baseIndex, target.slot)
+					if pedestal then
+						local dest = pedestal.part.Position + Vector3.new(0, 1, 0)
+						local arrived = moveBotTo(bot, dest)
+						if arrived and pedestal.record then
+							task.wait(Config.BOT_STEAL_HOLD_S)
+							if pedestal.record then
+								local model = StealAndLock.tryStealBrainrotForBot(target.baseIndex, target.slot)
+								if model then
+									-- Carry it above the bot's head and run to the corner.
+									for _, part in ipairs(model:GetDescendants()) do
+										if part:IsA("BasePart") then
+											part.Anchored = false
+										end
 									end
-								end
-								local head = bot.model:FindFirstChild("Head")
-								if head then
-									local body = model.PrimaryPart
-									if body then
-										-- FIX #2: tinggi bawa ikut ukuran model (lihat CarryAndPlace).
-										local carryY = (model:GetAttribute("BodySize") or 2) / 2 + 2.2
-										body.CFrame = head.CFrame * CFrame.new(0, carryY, 0)
-										local weld = Instance.new("Weld")
-										weld.Name = "CarryWeld"
-										weld.Part0 = head
-										weld.Part1 = body
-										weld.C0 = CFrame.new(0, carryY, 0)
-										weld.Parent = head
-										bot.carried = model
+									local head = bot.model:FindFirstChild("Head")
+									if head then
+										local body = model.PrimaryPart
+										if body then
+											-- FIX #2: tinggi bawa ikut ukuran model (lihat CarryAndPlace).
+											local carryY = (model:GetAttribute("BodySize") or 2) / 2 + 2.2
+											body.CFrame = head.CFrame * CFrame.new(0, carryY, 0)
+											local weld = Instance.new("Weld")
+											weld.Name = "CarryWeld"
+											weld.Part0 = head
+											weld.Part1 = body
+											weld.C0 = CFrame.new(0, carryY, 0)
+											weld.Parent = head
+											bot.carried = model
+										end
 									end
-								end
-								moveBotTo(bot, bot.corner)
-								task.wait(Config.BOT_DESPAWN_S)
-								if bot.carried then
-									local stolen = bot.carried
-									bot.carried = nil
-									if stolen.Parent then
-										stolen:Destroy()
+									moveBotTo(bot, bot.corner)
+									task.wait(Config.BOT_DESPAWN_S)
+									if bot.carried then
+										local stolen = bot.carried
+										bot.carried = nil
+										if stolen.Parent then
+											stolen:Destroy()
+										end
 									end
 								end
 							end
 						end
 					end
 				end
-			end
 			end)
 			if not ok then
 				warn("[PasarBrainrot] botBrain gagal: " .. tostring(err))
