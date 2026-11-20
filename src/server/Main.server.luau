@@ -192,16 +192,22 @@ end)
 -- built here at runtime (board part name -> text, colour, billboard size).
 local function buildWorldSigns()
 	local signs = {
-		{ part = "ConveyorSign", text = "SABUK BRAINROT", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(10, 0, 3, 0) },
+		-- Fix #6 (20 Nov 2026): the three big labels used to stack on top
+		-- of each other from the play camera, so each now carries a world
+		-- offset that puts it in its own lane: SABUK (conveyor) far west
+		-- (-52, 3, 0), SABUK (beacon) high and south (0, 23, 10),
+		-- PASAR BRAINROT far north on its wall (0, 7, -58),
+		-- SUDUT MALING far south (0, 4, 56).
+		{ part = "ConveyorSign", text = "SABUK BRAINROT", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(10, 0, 3, 0), offset = Vector3.new(-8, 0, 0) },
 		-- FIX (17 Nov 2026): floating beacon label above the belt beam, so
 		-- the belt reads from every spawn, even at 60 studs away.
-		{ part = "BeltBeacon", text = "▼ SABUK BRAINROT ▼", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(26, 0, 4, 0) },
-		{ part = "TitleSign", text = "PASAR BRAINROT", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(18, 0, 3, 0) },
+		{ part = "BeltBeacon", text = "▼ SABUK BRAINROT ▼", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(26, 0, 4, 0), offset = Vector3.new(0, 8, 10) },
+		{ part = "TitleSign", text = "PASAR BRAINROT", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(18, 0, 3, 0), offset = Vector3.new(0, 0, 0) },
 		{ part = "BaseSignRed", text = "BASE MERAH", color = Color3.fromRGB(255, 89, 89), size = UDim2.new(10, 0, 2, 0) },
 		{ part = "BaseSignBlue", text = "BASE BIRU", color = Color3.fromRGB(102, 166, 255), size = UDim2.new(10, 0, 2, 0) },
 		{ part = "BaseSignGreen", text = "BASE HIJAU", color = Color3.fromRGB(102, 255, 128), size = UDim2.new(10, 0, 2, 0) },
 		{ part = "BaseSignYellow", text = "BASE KUNING", color = Color3.fromRGB(255, 217, 51), size = UDim2.new(10, 0, 2, 0) },
-		{ part = "ThiefSignSouth", text = "SUDUT MALING", color = Color3.fromRGB(255, 89, 89), size = UDim2.new(6, 0, 1.5, 0) },
+		{ part = "ThiefSignSouth", text = "SUDUT MALING", color = Color3.fromRGB(255, 89, 89), size = UDim2.new(6, 0, 1.5, 0), offset = Vector3.new(0, 0, 0) },
 	}
 	for _, sign in ipairs(signs) do
 		local ok, err = pcall(function()
@@ -210,6 +216,7 @@ local function buildWorldSigns()
 				local gui = Instance.new("BillboardGui")
 				gui.Name = "SignGui"
 				gui.Size = sign.size
+				gui.StudsOffsetWorldSpace = sign.offset or Vector3.zero
 				gui.AlwaysOnTop = true
 				gui.Parent = board
 				local label = Instance.new("TextLabel")

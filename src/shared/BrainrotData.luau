@@ -1,16 +1,7 @@
 -- SPDX-License-Identifier: MIT
--- BrainrotData.luau
--- Data 13 karakter brainrot (total weight 100.2).
--- Bentuk dikenali: setiap baris punya field `shape` yang
--- dipakai BrainrotFactory.buildShape untuk membangun model
--- dari part biasa (Part/Wedge/Ball/Cylinder) dengan siluet
--- + warna + ciri khas sendiri, bukan manusia balok generik.
--- Nilai ekonomi (weight/rate/price/size) PERSIS v16.
--- Total weight 100.2 (tetap); field `shape` dipakai factory,
--- field `accessory` dipertahankan apa adanya (kompatibilitas).
--- Rarity: Common < Uncommon < Rare < Epic < Mythic.
--- rollCharacter(): total weight, roll acak, fallback CAST[1].
--- getRarityColor(): fallback putih bila rarity tak dikenal.
+-- BrainrotData: the 13-character Italian-brainrot cast for Pasar Brainrot.
+-- Values (id / name / rarity / weight / rate / price / color / size /
+-- accessory / shape) are the v16/v17 numbers; total weight 100.2.
 
 local BrainrotData = {}
 
@@ -40,24 +31,24 @@ BrainrotData.CAST = {
 	{ id = "vaca-saturno", name = "La Vaca Saturno Saturnita", rarity = "Mythic", weight = 0.2, rate = 600, price = 40000, color = Color3.fromRGB(235, 235, 240), size = 7.0, accessory = "rings", shape = "cow-saturn" },
 }
 
-function BrainrotData.getRarityColor(rarity)
-	return BrainrotData.RARITY_COLORS[rarity] or Color3.fromRGB(255, 255, 255)
-end
-
 function BrainrotData.rollCharacter()
 	local total = 0
 	for _, row in ipairs(BrainrotData.CAST) do
-		total = total + row.weight
+		total += row.weight
 	end
 	local roll = math.random() * total
 	local acc = 0
 	for _, row in ipairs(BrainrotData.CAST) do
-		acc = acc + row.weight
+		acc += row.weight
 		if roll <= acc then
 			return row
 		end
 	end
 	return BrainrotData.CAST[1]
+end
+
+function BrainrotData.getRarityColor(rarity)
+	return BrainrotData.RARITY_COLORS[rarity] or BrainrotData.RARITY_COLORS.Common
 end
 
 return BrainrotData
